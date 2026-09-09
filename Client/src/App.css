@@ -1,0 +1,16 @@
+body {
+  font-family: Arial, sans-serif;
+}
+
+.user-profile-pic{
+  width: 100%;
+  max-width: 22px;
+  border: 2px solid gray;
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.user-profile-pic:hover{
+  border-color: #3C83F6;
+}
+

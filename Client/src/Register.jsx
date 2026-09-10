@@ -1,7 +1,7 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import DOMPurify from 'dompurify';
+import DOMPurify from "dompurify";
 import "./Auth.css";
 
 const Register = () => {
@@ -39,8 +39,9 @@ const Register = () => {
 
   // Handler for input changes
   const handleChange = (e) => {
-    const { name, value } = DOMPurify.sanitize(e.target);
-
+    const { name, value } = e.target;
+    const sanitizedName = DOMPurify.sanitize(name);
+    const sanitizedValue = DOMPurify.sanitize(value);
     // Clear the server error as soon as the user starts typing in Email
     if (name === "email" && serverError) {
       setServerError("");
@@ -52,7 +53,7 @@ const Register = () => {
 
     setFormData((prevFormData) => ({
       ...prevFormData,
-      [name]: value,
+      [sanitizedName]: sanitizedValue,
     }));
   };
 
@@ -74,7 +75,7 @@ const Register = () => {
         },
       });
       const data = await res.json();
-      console.log(res);
+
       if (res.ok) {
         setOtpError("");
         setCountdown(60);
@@ -83,7 +84,6 @@ const Register = () => {
         setOtpError(data.error || "Failed to send OTP.");
       }
     } catch (err) {
-      console.error(err);
       setOtpError("Something went wrong sending OTP.");
     } finally {
       setIsSendingOtp(false);
@@ -107,7 +107,7 @@ const Register = () => {
         },
       });
       const data = await res.json();
-      console.log(res);
+
       if (res.ok) {
         setOtpError("");
         setIsOtpVerified(true);
@@ -115,7 +115,6 @@ const Register = () => {
         setOtpError(data.error || "Invalid or expired OTP.");
       }
     } catch (err) {
-      console.error(err);
       setOtpError("Something went wrong verifying OTP.");
     } finally {
       setIsVerifying(false);
@@ -155,7 +154,6 @@ const Register = () => {
       }
     } catch (error) {
       // In case fetch fails
-      console.error("Error:", error);
       setServerError("Something went wrong. Please try again.");
     }
   };

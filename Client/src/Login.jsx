@@ -9,8 +9,8 @@ const Login = () => {
   const BASE_URL = import.meta.env.VITE_BACKEND_URL; // Use the environment variable for the backend URL
 
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: "frd@gmail.com",
+    password: "frd@706",
   });
 
   // serverError will hold the error message from the server
@@ -36,8 +36,9 @@ const Login = () => {
   }, [countdown]);
 
   const handleChange = (e) => {
-    const { name, value } = DOMPurify.sanitize(e.target);
-
+    const { name, value } = e.target;
+    const sanitizedName = DOMPurify.sanitize(name)
+    const sanitizedValue = DOMPurify.sanitize(value)
     // Clear the server error as soon as the user starts typing in either field
     if (serverError) {
       setServerError("");
@@ -49,19 +50,17 @@ const Login = () => {
 
     setFormData((prevFormData) => ({
       ...prevFormData,
-      [name]: value,
+      [sanitizedName]: sanitizedValue,
     }));
   };
 
   // Handler for sending OTP
   const sendOtp = async () => {
-    console.log(formData);
     const { email } = formData;
     if (!email) {
       setOtpError("Please enter an Email before sending the OTP.");
       return;
     }
-    console.log(email);
 
     try {
       setIsSendingOtp(true);
@@ -73,7 +72,6 @@ const Login = () => {
         },
       });
       const data = await res.json();
-      console.log(res);
       if (res.ok) {
         setOtpError("");
         setCountdown(60);
@@ -82,7 +80,6 @@ const Login = () => {
         setOtpError(data.error || "Failed to send OTP.");
       }
     } catch (err) {
-      console.error(err);
       setOtpError("Something went wrong sending OTP.");
     } finally {
       setIsSendingOtp(false);

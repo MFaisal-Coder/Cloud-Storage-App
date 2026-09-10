@@ -9,8 +9,8 @@ const Login = () => {
   const BASE_URL = import.meta.env.VITE_BACKEND_URL; // Use the environment variable for the backend URL
 
   const [formData, setFormData] = useState({
-    email: "frd@gmail.com",
-    password: "frd@706",
+    email: "",
+    password: "",
   });
 
   // serverError will hold the error message from the server

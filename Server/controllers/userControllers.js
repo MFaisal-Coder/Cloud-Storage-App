@@ -2,119 +2,142 @@ import mongoose from "mongoose";
 import Directory from "../models/directoryModel.js";
 import Session from "../models/sessionModel.js";
 import User from "../models/userModel.js";
-import { loginSchema, registerSchema } from "../validators/zodValidator.js";
+import { emailSchema, loginSchema, registerSchema } from "../validators/zodValidator.js";
+import purify from "../validators/purify.js";
 
 export const createUser = async (req, res, next) => {
-  const { name, email, password } = registerSchema.parse(req.body);
-  console.log(name, email, password);
-
-  const foundUser = await User.findOne({ email });
-  if (foundUser) {
-    return res.status(409).json({
-      error: "User already exists",
-      message:
-        "A user with this email address already exists. Please try logging in or use a different email.",
-    });
-  }
-
-  const session = await mongoose.startSession();
-
   try {
-    const userId = new mongoose.Types.ObjectId();
-    const dirId = new mongoose.Types.ObjectId();
+    const { name, email, password } = req.body;
+    const sanitizedName = purify.sanitize(name)
+    const sanitizedEmail = purify.sanitize(email)
+    const sanitizedPassword = purify.sanitize(password)
 
-    session.startTransaction();
+    const {
+      name: sanitized_name,
+      email: sanitized_email,
+    } = registerSchema.parse({name: sanitizedName, email: sanitizedEmail});
 
-    await Directory.insertOne(
-      {
-        _id: dirId, //added after creating objectID (NEW)
-        name: `root-${email}`,
-        parentDirId: null,
-        userId, //added after creating objectID (NEW)
-      },
-      { session },
-    );
-
-    await User.insertOne(
-      {
-        _id: userId, //added after creating objectID (NEW)
-        name,
-        email,
-        password,
-        rootDirId: dirId, //added after creating objectID (NEW)
-      },
-      { session },
-    );
-
-    await session.commitTransaction();
-
-    res.status(201).json({ message: "User Registered" });
-  } catch (err) {
-    // console.log(err)
-    // console.log(err.errorResponse.errInfo.details.schemaRulesNotSatisfied[0].propertiesNotSatisfied[0])
-    session.abortTransaction();
-    if (err.code === 121) {
-      res
-        .status(400)
-        .json({ error: "Invalid input, please enter valid details" });
-    } else if (err.code === 11000) {
-      if (err.keyValue.email) {
-        return res.status(409).json({
-          error: "This email already exists",
-          message:
-            "A user with this email address already exists. Please try logging in or use a different email.",
-        });
-      }
-    } else {
-      next(err);
+    const foundUser = await User.findOne({ email: sanitized_email });
+    if (foundUser) {
+      return res.status(409).json({
+        error: "User already exists",
+        message:
+          "A user with this email address already exists. Please try logging in or use a different email.",
+      });
     }
-  } finally {
-    session.endSession();
+
+    const session = await mongoose.startSession();
+
+    try {
+      const userId = new mongoose.Types.ObjectId();
+      const dirId = new mongoose.Types.ObjectId();
+
+      session.startTransaction();
+
+      await Directory.insertOne(
+        {
+          _id: dirId, //added after creating objectID (NEW)
+          name: `root-${sanitized_email}`,
+          parentDirId: null,
+          userId, //added after creating objectID (NEW)
+        },
+        { session },
+      );
+
+      await User.insertOne(
+        {
+          _id: userId, //added after creating objectID (NEW)
+          name: sanitized_name,
+          email: sanitized_email,
+          password: sanitizedPassword,
+          rootDirId: dirId, //added after creating objectID (NEW)
+        },
+        { session },
+      );
+
+      await session.commitTransaction();
+
+      res.status(201).json({ message: "User Registered" });
+    } catch (err) {
+      // console.log(err)
+      // console.log(err.errorResponse.errInfo.details.schemaRulesNotSatisfied[0].propertiesNotSatisfied[0])
+      session.abortTransaction();
+      if (err.code === 121) {
+        res
+          .status(400)
+          .json({ error: "Invalid input, please enter valid details" });
+      } else if (err.code === 11000) {
+        if (err.keyValue.email) {
+          return res.status(409).json({
+            error: "This email already exists",
+            message:
+              "A user with this email address already exists. Please try logging in or use a different email.",
+          });
+        }
+      } else {
+        next(err);
+      }
+    } finally {
+      session.endSession();
+    }
+  } catch (err) {
+    // for ZOD errors, we will send the error message to the front end. We can also use a custom error handler middleware to handle all errors in one place.
+
+    next(err);
   }
 };
 
 export const loginUser = async (req, res, next) => {
-  const { email, password } = loginSchema.parse(req.body);
-  const user = await User.findOne({ email });
-  // console.log(await user.comparePassword(password))
-  if (!user) {
-    return res.status(404).json({ error: "Invalid Credentials" });
-  }
+  try {
+    const { email, password } = req.body;
+    const sanitizedEmail = purify.sanitize(email)
+    const sanitizedPassword = purify.sanitize(password)
+    const {email: sanitized_email} = emailSchema.parse({email: sanitizedEmail})
+    const user = await User.findOne({ email: sanitized_email });
+    console.log(user)
+    // console.log(await user.comparePassword(password))
+    if (!user) {
+      return res.status(404).json({ error: "Invalid Credentials" });
+    }
 
-  if (user.isDeleted) {
-    return res.status(403).json({
-      error:
-        "You cannot login. Please contact your system admin for more info.",
+    if (user.isDeleted) {
+      return res.status(403).json({
+        error:
+          "You cannot login. Please contact your system admin for more info.",
+      });
+    }
+
+    const isPasswordCorrect = await user.comparePassword(sanitizedPassword);
+    // const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordCorrect) {
+      return res.status(404).json({ error: "Invalid Credentials" });
+    }
+
+    const newSession = await Session.create({ userId: user.id });
+
+    const allActiveSessions = await Session.find({ userId: user.id });
+    // console.log(allActiveSessions)
+
+    // we can also add a property called as 'maxAllowedDevice' for our user documents and give each user a ste of max devices allowed based on their subscription plan.
+    // then in that case the below query would look something like
+    // if(allActiveSessions.length >= user.maxAllowedDevices)
+    if (allActiveSessions.length >= 3) {
+      await allActiveSessions[0].deleteOne(); //grab the first one and delete
+    }
+
+    // console.log({allActiveSessions})
+
+    res.cookie("sid", newSession._id.toString(), {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60,
+      signed: true,
     });
+    res.status(200).json({ message: "logged in" });
+  } catch (err) {
+    console.log(err)
+    next(err);
   }
-
-  const isPasswordCorrect = await user.comparePassword(password);
-  // const isPasswordValid = await bcrypt.compare(password, user.password);
-
-  if (!isPasswordCorrect) {
-    return res.status(404).json({ error: "Invalid Credentials" });
-  }
-
-  const newSession = await Session.create({ userId: user.id });
-
-  const allActiveSessions = await Session.find({ userId: user.id });
-  // console.log(allActiveSessions)
-
-  // we can also add a property called as 'maxAllowedDevice' for our user documents and give each user a ste of max devices allowed based on their subscription plan.
-  // then in that case the below query would look something like
-  // if(allActiveSessions.length >= user.maxAllowedDevices)
-  if (allActiveSessions.length >= 3) {
-    await allActiveSessions[0].deleteOne(); //grab the first one and delete
-  }
-
-  // console.log({allActiveSessions})
-
-  res.cookie("sid", newSession._id.toString(), {
-    httpOnly: true,
-    maxAge: 1000 * 60 * 60,
-    signed: true,
-  });
-  res.status(200).json({ message: "logged in" });
 };
 
 export const getCurrentUser = (req, res) => {
@@ -146,7 +169,7 @@ export const getAllUsers = async (req, res) => {
 
 export const logout = async (req, res) => {
   const sid = req.signedCookies.sid;
-  const session = await Session.findByIdAndDelete(sid);
+  await Session.findByIdAndDelete(sid);
   res.clearCookie("sid");
   res.status(200).end();
 };

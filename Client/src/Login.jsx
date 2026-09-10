@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import "./Auth.css";
 import loginWithGoogleApi from "./apis/loginWithGoogleApi.js";
+import DOMPurify from 'dompurify';
 
 const Login = () => {
   const BASE_URL = import.meta.env.VITE_BACKEND_URL; // Use the environment variable for the backend URL
@@ -35,7 +36,7 @@ const Login = () => {
   }, [countdown]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value } = DOMPurify.sanitize(e.target);
 
     // Clear the server error as soon as the user starts typing in either field
     if (serverError) {
@@ -199,7 +200,7 @@ const Login = () => {
             id="otp-input"
             type="text"
             placeholder="Enter 4-digit OTP"
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => setOtp(DOMPurify.sanitize(e.target.value))}
           />
 
           {!isOtpSent && (

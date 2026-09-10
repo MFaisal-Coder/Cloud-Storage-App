@@ -1,6 +1,7 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import DOMPurify from 'dompurify';
 import "./Auth.css";
 
 const Register = () => {
@@ -38,7 +39,7 @@ const Register = () => {
 
   // Handler for input changes
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value } = DOMPurify.sanitize(e.target);
 
     // Clear the server error as soon as the user starts typing in Email
     if (name === "email" && serverError) {
@@ -226,7 +227,7 @@ const Register = () => {
               id="otp"
               name="otp"
               value={otp}
-              onChange={(e) => setOtp(e.target.value)}
+              onChange={(e) => setOtp(DOMPurify.sanitize(e.target.value))}
               placeholder="Please enter 4-digit OTP"
               required
             />

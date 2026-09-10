@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
-import User from "../models/userModel.js";
 import Directory from "../models/directoryModel.js";
 import Session from "../models/sessionModel.js";
-import File from "../models/fileModel.js";
+import User from "../models/userModel.js";
+import { loginSchema, registerSchema } from "../validators/zodValidator.js";
 
 export const createUser = async (req, res, next) => {
-  const { name, email, password } = req.body;
+  const { name, email, password } = registerSchema.parse(req.body);
+  console.log(name, email, password);
 
   const foundUser = await User.findOne({ email });
   if (foundUser) {
@@ -24,7 +25,7 @@ export const createUser = async (req, res, next) => {
 
     session.startTransaction();
 
-    const directoryCollection = await Directory.insertOne(
+    await Directory.insertOne(
       {
         _id: dirId, //added after creating objectID (NEW)
         name: `root-${email}`,
@@ -34,7 +35,7 @@ export const createUser = async (req, res, next) => {
       { session },
     );
 
-    const userCollection = await User.insertOne(
+    await User.insertOne(
       {
         _id: userId, //added after creating objectID (NEW)
         name,
@@ -73,15 +74,18 @@ export const createUser = async (req, res, next) => {
 };
 
 export const loginUser = async (req, res, next) => {
-  const { email, password } = req.body;
+  const { email, password } = loginSchema.parse(req.body);
   const user = await User.findOne({ email });
   // console.log(await user.comparePassword(password))
   if (!user) {
     return res.status(404).json({ error: "Invalid Credentials" });
   }
 
-  if(user.isDeleted){
-    return res.status(403).json({error: 'You cannot login. Please contact your system admin for more info.'})
+  if (user.isDeleted) {
+    return res.status(403).json({
+      error:
+        "You cannot login. Please contact your system admin for more info.",
+    });
   }
 
   const isPasswordCorrect = await user.comparePassword(password);
@@ -119,11 +123,11 @@ export const getCurrentUser = (req, res) => {
     email: req.user.email,
     picture: req.user.picture,
     role: req.user.role,
-  }); 
+  });
 };
 
 export const getAllUsers = async (req, res) => {
-  const allUsers = await User.find({isDeleted: false}).lean();
+  const allUsers = await User.find({ isDeleted: false }).lean();
   const allActiveSessions = await Session.find().lean();
   const allActiveSessionsIds = allActiveSessions.map(({ userId }) =>
     userId.toString(),
@@ -158,11 +162,11 @@ export const logoutAll = async (req, res) => {
 
 export const logoutUsers = async (req, res) => {
   const { userId } = req.params;
-  try{
-  await Session.deleteMany({ userId });
-  }catch(err){
-    console.log(err.message)
-    return res.json({error: 'Something went wrong'})
+  try {
+    await Session.deleteMany({ userId });
+  } catch (err) {
+    console.log(err.message);
+    return res.json({ error: "Something went wrong" });
   }
   return res.status(200).json({ message: `User Logged out successfully` });
 };
@@ -174,10 +178,10 @@ export const deleteUsers = async (req, res, next) => {
     /* await User.findOneAndDelete({ _id: userId });
     await Directory.deleteMany({ userId });
     await File.deleteMany({ userId }); */
-    await User.findByIdAndUpdate(userId, {isDeleted: true})
+    await User.findByIdAndUpdate(userId, { isDeleted: true });
     await Session.deleteMany({ userId });
   } catch (err) {
-    console.log(err.message)
+    console.log(err.message);
     next(err);
   }
   return res.status(200).json({ message: "User Deleted Successfully." });

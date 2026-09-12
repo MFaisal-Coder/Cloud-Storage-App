@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import directoryRoutes from "./routes/directoryRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import helmet from "helmet";
 
 await connectDB();
 
@@ -23,6 +24,7 @@ try {
       credentials: true,
     }),
   );
+  app.use(helmet())
 
   app.use("/auth", authRoutes);
   app.use("/", userRoutes);

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import Directory from "../models/directoryModel.js";
 import Session from "../models/sessionModel.js";
 import User from "../models/userModel.js";
-import { emailSchema, loginSchema, registerSchema } from "../validators/zodValidator.js";
+import { emailSchema, registerSchema } from "../validators/zodValidator.js";
 import purify from "../validators/purify.js";
 
 export const createUser = async (req, res, next) => {
@@ -94,7 +94,6 @@ export const loginUser = async (req, res, next) => {
     const sanitizedPassword = purify.sanitize(password)
     const {email: sanitized_email} = emailSchema.parse({email: sanitizedEmail})
     const user = await User.findOne({ email: sanitized_email });
-    console.log(user)
     // console.log(await user.comparePassword(password))
     if (!user) {
       return res.status(404).json({ error: "Invalid Credentials" });
@@ -131,6 +130,8 @@ export const loginUser = async (req, res, next) => {
     res.cookie("sid", newSession._id.toString(), {
       httpOnly: true,
       maxAge: 1000 * 60 * 60,
+      sameSite: 'lax',
+      secure: true,
       signed: true,
     });
     res.status(200).json({ message: "logged in" });

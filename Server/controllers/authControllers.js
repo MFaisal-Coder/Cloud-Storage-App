@@ -10,10 +10,10 @@ import { loginSchema, emailSchema } from "../validators/zodValidator.js";
 
 export const sendOtpController = async (req, res, next) => {
   try {
-    const {email} = req.body;
-    const cleanedEmail = purify.sanitize(email)
-    const {email: verifiedEmail} = emailSchema.parse({email: cleanedEmail});
-    console.log(verifiedEmail)
+    const { email } = req.body;
+    const cleanedEmail = purify.sanitize(email);
+    const { email: verifiedEmail } = emailSchema.parse({ email: cleanedEmail });
+
     const resultData = await sendOtpService(verifiedEmail);
     res.status(201).json(resultData);
   } catch (err) {
@@ -24,10 +24,12 @@ export const sendOtpController = async (req, res, next) => {
 export const verifyOtpController = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
-    const cleanedEmail  = purify.sanitize(email);
-    const {email: sanitized_email} = emailSchema.parse({email: cleanedEmail})
+    const cleanedEmail = purify.sanitize(email);
+    const { email: sanitized_email } = emailSchema.parse({
+      email: cleanedEmail,
+    });
     const otpData = await OTP.findOne({ email: sanitized_email, otp });
-    console.log(otpData)
+
     if (!otpData) {
       return res.status(404).json({ error: "OTP expired or invalid" });
     }
@@ -84,6 +86,8 @@ export const loginWithGoogleController = async (req, res, next) => {
       res.cookie("sid", newSession.id, {
         httpOnly: true,
         maxAge: 1000 * 60 * 60,
+        sameSite: "lax",  //although chrome's default value sets to LAX, I'm explicitly saving it to LAX here to avoid CSRF 
+        secure: true,
         signed: true,
       });
 
@@ -111,6 +115,8 @@ export const loginWithGoogleController = async (req, res, next) => {
     res.cookie("sid", newSession.id, {
       httpOnly: true,
       maxAge: 1000 * 60 * 60,
+      sameSite: "lax",
+      secure: true,
       signed: true,
     });
     res.status(200).json({ message: "User Logged In." });

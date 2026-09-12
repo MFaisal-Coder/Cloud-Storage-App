@@ -12,11 +12,12 @@ import {
   logoutUsers,
 } from "../controllers/userControllers.js";
 import Session from "../models/sessionModel.js";
+import {registerlimiter, loginLimiter} from "../middlewares/rateLimiter.js";
 
 const router = express.Router();
 
-router.post("/user/register", createUser);
-router.post("/user/login", loginUser);
+router.post("/user/register",registerlimiter, createUser);
+router.post("/user/login", loginLimiter,loginUser);
 // User controllers & middlewares
 router.get("/user", checkAuth, getCurrentUser);
 router.post("/user/logout", logout);

@@ -16,6 +16,7 @@
     "cors": "^2.8.5",
     "dompurify": "^3.4.15",
     "express": "^4.21.2",
+    "express-rate-limit": "^8.7.0",
     "google-auth-library": "^10.9.1",
     "helmet": "^8.3.0",
     "jsdom": "^29.1.1",

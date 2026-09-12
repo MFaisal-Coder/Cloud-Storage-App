@@ -132,6 +132,7 @@ const Login = () => {
       });
 
       const data = await response.json();
+      // console.log(data)
       if (data.error) {
         // If there's an error, set the serverError message
         setServerError(data.error);
@@ -252,6 +253,9 @@ const Login = () => {
           const status = await loginWithGoogleApi(credentialResponse)
           if(status==='Successful') {
             navigate('/')
+          }
+          if(status.includes('Too many requests')){
+            setServerError(status)
           }
         }}
         theme="filled_blue"

@@ -12,6 +12,9 @@ export default async function loginWithGoogleApi(credentialResponse){
     })
 
     const data = await response.json()
+    if(data.error){
+        return data.error
+    }
     if(data.message = 'User Logged In.'){
         return 'Successful'
     }

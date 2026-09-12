@@ -5,6 +5,8 @@ import CreateDirectoryModal from "./components/CreateDirectoryModal";
 import RenameModal from "./components/RenameModal";
 import DirectoryList from "./components/DirectoryList";
 import "./DirectoryView.css";
+import DetailsModel from "./modals/DetailsModel";
+import { DirectoryContext } from "./context/DirectoryContext";
 
 export const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -30,6 +32,7 @@ function DirectoryView() {
   const [renameType, setRenameType] = useState(null); // "directory" or "file"
   const [renameId, setRenameId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
 
   // Uploading states
   const fileInputRef = useRef(null);
@@ -41,6 +44,7 @@ function DirectoryView() {
   // Context menu
   const [activeContextMenu, setActiveContextMenu] = useState(null);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+  const [details, setDetails] = useState(null)
 
   /**
    * Utility: handle fetch errors
@@ -201,8 +205,8 @@ function DirectoryView() {
     // Mark it as isUploading: true
     setFilesList((prev) =>
       prev.map((f) =>
-        f.id === currentItem.id ? { ...f, isUploading: true } : f
-      )
+        f.id === currentItem.id ? { ...f, isUploading: true } : f,
+      ),
     );
 
     // Start upload
@@ -336,7 +340,7 @@ function DirectoryView() {
         body: JSON.stringify(
           renameType === "file"
             ? { newFilename: renameValue }
-            : { newDirName: renameValue }
+            : { newDirName: renameValue },
         ),
         credentials: "include",
       });
@@ -383,79 +387,99 @@ function DirectoryView() {
     ...filesList.map((f) => ({ ...f, isDirectory: false })),
   ];
   return (
-    <div className="directory-view">
-      {/* Top error message for general errors */}
-      {errorMessage &&
-        errorMessage !==
-          "Directory not found or you do not have access to it!" && (
-          <div className="error-message">{errorMessage}</div>
+    <DirectoryContext.Provider
+      value={{
+        handleRowClick,
+        activeContextMenu,
+        handleContextMenu: (e, id) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setActiveContextMenu((prev) => (prev === id ? null : id));
+        },
+        getFileIcon,
+        isUploading,
+        progressMap,
+        contextMenuPos,
+        handleCancelUpload,
+        openRenameModal,
+        setDetails,
+        showDetails,
+        setShowDetails,
+        handleDeleteFile,
+        handleDeleteDirectory,
+        handleContextMenu,
+        BASE_URL,
+      }}
+    >
+      <div className="directory-view">
+        {/* Top error message for general errors */}
+        {errorMessage &&
+          errorMessage !==
+            "Directory not found or you do not have access to it!" && (
+            <div className="error-message">{errorMessage}</div>
+          )}
+
+        <DirectoryHeader
+          directoryName={directoryName}
+          onCreateFolderClick={() => setShowCreateDirModal(true)}
+          onUploadFilesClick={() => fileInputRef.current.click()}
+          fileInputRef={fileInputRef}
+          handleFileSelect={handleFileSelect}
+          // Disable if the user doesn't have access
+          disabled={
+            errorMessage ===
+            "Directory not found or you do not have access to it!"
+          }
+        />
+
+        {/* Create Directory Modal */}
+        {showCreateDirModal && (
+          <CreateDirectoryModal
+            newDirname={newDirname}
+            setNewDirname={setNewDirname}
+            onClose={() => setShowCreateDirModal(false)}
+            onCreateDirectory={handleCreateDirectory}
+          />
         )}
 
-      <DirectoryHeader
-        directoryName={directoryName}
-        onCreateFolderClick={() => setShowCreateDirModal(true)}
-        onUploadFilesClick={() => fileInputRef.current.click()}
-        fileInputRef={fileInputRef}
-        handleFileSelect={handleFileSelect}
-        // Disable if the user doesn't have access
-        disabled={
+        {/* Rename Modal */}
+        {showRenameModal && (
+          <RenameModal
+            renameType={renameType}
+            renameValue={renameValue}
+            setRenameValue={setRenameValue}
+            onClose={() => setShowRenameModal(false)}
+            onRenameSubmit={handleRenameSubmit}
+          />
+        )}
+
+        {combinedItems.length === 0 ? (
+          // Check if the error is specifically the "no access" error
           errorMessage ===
-          "Directory not found or you do not have access to it!"
-        }
-      />
-
-      {/* Create Directory Modal */}
-      {showCreateDirModal && (
-        <CreateDirectoryModal
-          newDirname={newDirname}
-          setNewDirname={setNewDirname}
-          onClose={() => setShowCreateDirModal(false)}
-          onCreateDirectory={handleCreateDirectory}
-        />
-      )}
-
-      {/* Rename Modal */}
-      {showRenameModal && (
-        <RenameModal
-          renameType={renameType}
-          renameValue={renameValue}
-          setRenameValue={setRenameValue}
-          onClose={() => setShowRenameModal(false)}
-          onRenameSubmit={handleRenameSubmit}
-        />
-      )}
-
-      {combinedItems.length === 0 ? (
-        // Check if the error is specifically the "no access" error
-        errorMessage ===
-        "Directory not found or you do not have access to it!" ? (
-          <p className="no-data-message">
-            Directory not found or you do not have access to it!
-          </p>
+          "Directory not found or you do not have access to it!" ? (
+            <p className="no-data-message">
+              Directory not found or you do not have access to it!
+            </p>
+          ) : (
+            <p className="no-data-message">
+              This folder is empty. Upload files or create a folder to see some
+              data.
+            </p>
+          )
         ) : (
-          <p className="no-data-message">
-            This folder is empty. Upload files or create a folder to see some
-            data.
-          </p>
-        )
-      ) : (
-        <DirectoryList
-          items={combinedItems}
-          handleRowClick={handleRowClick}
-          activeContextMenu={activeContextMenu}
-          contextMenuPos={contextMenuPos}
-          handleContextMenu={handleContextMenu}
-          getFileIcon={getFileIcon}
-          isUploading={isUploading}
-          progressMap={progressMap}
-          handleCancelUpload={handleCancelUpload}
-          handleDeleteFile={handleDeleteFile}
-          handleDeleteDirectory={handleDeleteDirectory}
-          openRenameModal={openRenameModal}
-          BASE_URL={BASE_URL}
-        />
-      )}
-    </div>
+          <DirectoryList
+            items={combinedItems}
+            BASE_URL={BASE_URL}
+          />
+        )}
+        {showDetails && (
+          <DetailsModel
+            item={details}
+            onClose={() => setShowDetails(false)}
+          />
+        )}
+      </div>
+    </DirectoryContext.Provider>
   );
 }
 

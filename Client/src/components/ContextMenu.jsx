@@ -1,83 +1,101 @@
-function ContextMenu({
-    item,
-    contextMenuPos,
-    isUploadingItem,
+import { useEffect } from "react";
+import { useDirectoryContext } from "../context/DirectoryContext";
+
+function ContextMenu({ item, isUploadingItem }) {
+  const {
     handleCancelUpload,
-    handleDeleteFile,
-    handleDeleteDirectory,
     openRenameModal,
     BASE_URL,
-  }) {
-    // Directory context menu
-    if (item.isDirectory) {
+    contextMenuPos,
+    setDetails,
+    setShowDetails,
+    handleDeleteFile,
+    handleDeleteDirectory,
+  } = useDirectoryContext();
+
+  useEffect(() => {
+    setDetails(item);
+  }, []);
+
+  const menuClass =
+    "absolute max-w-24 bg-white border border-blue-400 shadow-md right-2 top-4/5 rounded text-sm z-50 overflow-hidden";
+  const itemClass = "px-4 py-2 hover:bg-blue-100 cursor-pointer";
+
+  // Directory context menu
+  if (item.isDirectory) {
+    return (
+      <div
+        className={menuClass}
+      >
+        <div
+          className={itemClass}
+          onClick={() => openRenameModal("directory", item.id, item.name)}
+        >
+          Rename
+        </div>
+        <div
+          className={itemClass}
+          onClick={() => handleDeleteDirectory(item.id)}
+        >
+          Delete
+        </div>
+        <div
+          className={itemClass}
+          onClick={() => setShowDetails((prev) => !prev)}
+        >
+          Details
+        </div>
+      </div>
+    );
+  } else {
+    // File context menu
+    if (isUploadingItem && item.isUploading) {
+      // Only show "Cancel"
       return (
         <div
-          className="context-menu"
-          style={{ top: contextMenuPos.y, left: contextMenuPos.x }}
+          className={menuClass}
         >
           <div
-            className="context-menu-item"
-            onClick={() => openRenameModal("directory", item.id, item.name)}
+            className={itemClass}
+            onClick={() => handleCancelUpload(item.id)}
           >
-            Rename
-          </div>
-          <div
-            className="context-menu-item"
-            onClick={() => handleDeleteDirectory(item.id)}
-          >
-            Delete
+            Cancel
           </div>
         </div>
       );
     } else {
-      // File context menu
-      if (isUploadingItem && item.isUploading) {
-        // Only show "Cancel"
-        return (
+      // Normal file
+      return (
+        <div
+          className={menuClass}
+        >
           <div
-            className="context-menu"
-            style={{ top: contextMenuPos.y, left: contextMenuPos.x }}
+            className={itemClass}
+            onClick={() =>
+              (window.location.href = `${BASE_URL}/file/${item.id}?action=download`)
+            }
           >
-            <div
-              className="context-menu-item"
-              onClick={() => handleCancelUpload(item.id)}
-            >
-              Cancel
-            </div>
+            Download
           </div>
-        );
-      } else {
-        // Normal file
-        return (
           <div
-            className="context-menu"
-            style={{ top: contextMenuPos.y, left: contextMenuPos.x }}
+            className={itemClass}
+            onClick={() => openRenameModal("file", item.id, item.name)}
           >
-            <div
-              className="context-menu-item"
-              onClick={() =>
-                (window.location.href = `${BASE_URL}/file/${item.id}?action=download`)
-              }
-            >
-              Download
-            </div>
-            <div
-              className="context-menu-item"
-              onClick={() => openRenameModal("file", item.id, item.name)}
-            >
-              Rename
-            </div>
-            <div
-              className="context-menu-item"
-              onClick={() => handleDeleteFile(item.id)}
-            >
-              Delete
-            </div>
+            Rename
           </div>
-        );
-      }
+          <div className={itemClass} onClick={() => handleDeleteFile(item.id)}>
+            Delete
+          </div>
+          <div
+            className={itemClass}
+            onClick={() => setShowDetails((prev) => !prev)}
+          >
+            Details
+          </div>
+        </div>
+      );
     }
   }
-  
-  export default ContextMenu;
-  
+}
+
+export default ContextMenu;

@@ -2,20 +2,18 @@ import mongoose from "mongoose";
 import Directory from "../models/directoryModel.js";
 import Session from "../models/sessionModel.js";
 import User from "../models/userModel.js";
-import { emailSchema, registerSchema } from "../validators/zodValidator.js";
 import purify from "../validators/purify.js";
+import { emailSchema, registerSchema } from "../validators/zodValidator.js";
 
 export const createUser = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
-    const sanitizedName = purify.sanitize(name)
-    const sanitizedEmail = purify.sanitize(email)
-    const sanitizedPassword = purify.sanitize(password)
+    const sanitizedName = purify.sanitize(name);
+    const sanitizedEmail = purify.sanitize(email);
+    const sanitizedPassword = purify.sanitize(password);
 
-    const {
-      name: sanitized_name,
-      email: sanitized_email,
-    } = registerSchema.parse({name: sanitizedName, email: sanitizedEmail});
+    const { name: sanitized_name, email: sanitized_email } =
+      registerSchema.parse({ name: sanitizedName, email: sanitizedEmail });
 
     const foundUser = await User.findOne({ email: sanitized_email });
     if (foundUser) {
@@ -90,9 +88,11 @@ export const createUser = async (req, res, next) => {
 export const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const sanitizedEmail = purify.sanitize(email)
-    const sanitizedPassword = purify.sanitize(password)
-    const {email: sanitized_email} = emailSchema.parse({email: sanitizedEmail})
+    const sanitizedEmail = purify.sanitize(email);
+    const sanitizedPassword = purify.sanitize(password);
+    const { email: sanitized_email } = emailSchema.parse({
+      email: sanitizedEmail,
+    });
     const user = await User.findOne({ email: sanitized_email });
     // console.log(await user.comparePassword(password))
     if (!user) {
@@ -130,13 +130,13 @@ export const loginUser = async (req, res, next) => {
     res.cookie("sid", newSession._id.toString(), {
       httpOnly: true,
       maxAge: 1000 * 60 * 60,
-      sameSite: 'lax',
+      sameSite: "lax",
       secure: true,
       signed: true,
     });
     res.status(200).json({ message: "logged in" });
   } catch (err) {
-    console.log(err)
+    console.log(err);
     next(err);
   }
 };

@@ -37,11 +37,11 @@ try {
           userId: {
             bsonType: "objectId",
           },
-          __v:{
-            bsonType: "int"
-          }
+          __v: {
+            bsonType: "int",
+          },
         },
-        additionalProperties: false,
+        additionalProperties: true,
       },
     },
     validationAction: "error",
@@ -65,16 +65,20 @@ try {
             minLength: 3,
             description: "File name must have at least 3 characters",
           },
+          size: {
+            bsonType: "int",
+          },
           parentDirId: {
             bsonType: "objectId",
           },
           userId: {
             bsonType: "objectId",
           },
-          __v:{
-            bsonType: "int"
-          }
+          __v: {
+            bsonType: "int",
+          },
         },
+        additionalProperties: true
       },
     },
     validationAction: "error",
@@ -107,10 +111,10 @@ try {
           },
           // Adding MongoDB schema for roles
           role: {
-            enum: ['Admin', 'Manager','User']
+            enum: ["Admin", "Manager", "User"],
           },
-          isDeleted:{
-            bsonType: 'bool'
+          isDeleted: {
+            bsonType: "bool",
           },
           picture: {
             bsonType: "string",
@@ -118,10 +122,11 @@ try {
           rootDirId: {
             bsonType: "objectId",
           },
-          __v:{
-            bsonType: "int"
-          }
+          __v: {
+            bsonType: "int",
+          },
         },
+        additionalProperties: true
       },
     },
     validationAction: "error",

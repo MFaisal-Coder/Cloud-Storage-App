@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
-import OTP from "../models/otpModel.js";
-import User from "../models/userModel.js";
 import Directory from "../models/directoryModel.js";
+import OTP from "../models/otpModel.js";
+import Session from "../models/sessionModel.js";
+import User from "../models/userModel.js";
 import loginWithGoogle from "../services/loginWithGoogle.js";
 import sendOtpService from "../services/sendOtpService.js";
-import Session from "../models/sessionModel.js";
 import purify from "../validators/purify.js";
-import { loginSchema, emailSchema } from "../validators/zodValidator.js";
+import { emailSchema } from "../validators/zodValidator.js";
 
 export const sendOtpController = async (req, res, next) => {
   try {
@@ -44,7 +44,7 @@ export const loginWithGoogleController = async (req, res, next) => {
   const { name, picture, email, sub } = await loginWithGoogle(credential);
   const user = await User.findOne({ email });
 
-  if (user.isDeleted) {
+  if (user && user.isDeleted) {
     return res.status(403).json({
       error:
         "You cannot login. Please contact your system admin for more info.",
@@ -86,7 +86,7 @@ export const loginWithGoogleController = async (req, res, next) => {
       res.cookie("sid", newSession.id, {
         httpOnly: true,
         maxAge: 1000 * 60 * 60,
-        sameSite: "lax",  //although chrome's default value sets to LAX, I'm explicitly saving it to LAX here to avoid CSRF 
+        sameSite: "lax", //although chrome's default value sets to LAX, I'm explicitly saving it to LAX here to avoid CSRF
         secure: true,
         signed: true,
       });
@@ -95,6 +95,7 @@ export const loginWithGoogleController = async (req, res, next) => {
 
       res.status(201).json({ message: "User Registered" });
     } catch (err) {
+      // console.log('Hii', err.errorResponse.errInfo.details.schemaRulesNotSatisfied[0])
       next(err);
     } finally {
       mongooseSession.endSession();

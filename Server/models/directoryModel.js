@@ -16,7 +16,8 @@ const directorySchema = new Schema({
         ref: 'Directory'
     }
 },{
-    strict: 'throw' // this is equivalent to 'additionalProperties: false' in MongoDB which does not allow to add any other fields that arent in schema
+    strict: 'throw', // this is equivalent to 'additionalProperties: false' in MongoDB which does not allow to add any other fields that arent in schema
+    timestamps: true
 })
 
 const Directory = model('Directory', directorySchema)

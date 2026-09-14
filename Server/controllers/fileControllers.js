@@ -1,7 +1,7 @@
 import { createWriteStream } from "fs";
 import { rm } from "fs/promises";
 import path from "path";
-import Directory from '../models/directoryModel.js'
+import Directory from "../models/directoryModel.js";
 import File from "../models/fileModel.js";
 
 export const uploadFile = async (req, res, next) => {
@@ -13,6 +13,8 @@ export const uploadFile = async (req, res, next) => {
   });
 
   const filename = req.headers.filename || "untitled";
+  const filesize = req.headers.filesize;
+  console.log(filesize);
   const extension = path.extname(filename);
 
   const fileInserted = await File.insertOne({
@@ -20,6 +22,7 @@ export const uploadFile = async (req, res, next) => {
     name: filename,
     parentDirId,
     userId: parentDirData.userId,
+    size: filesize,
   });
 
   // console.log(fileInserted)
@@ -37,13 +40,11 @@ export const uploadFile = async (req, res, next) => {
       next(err);
     }
   });
-  
-  req.on('error', ()=>{
-     return res.status(404).json({ message: "Error In File Uploaded" });
-  })
-  
 
-}
+  req.on("error", () => {
+    return res.status(404).json({ message: "Error In File Uploaded" });
+  });
+};
 
 export const readFile = async (req, res) => {
   const { id } = req.params;
@@ -71,7 +72,7 @@ export const readFile = async (req, res) => {
       return res.status(404).json({ error: "File not found!" });
     }
   });
-}
+};
 
 export const updateFile = async (req, res, next) => {
   const { id } = req.params;
@@ -90,7 +91,7 @@ export const updateFile = async (req, res, next) => {
     // Perform rename
     await File.updateOne(
       { _id: id, userId: req.user._id },
-      { name: req.body.newFilename } ,
+      { name: req.body.newFilename },
     );
 
     return res.status(200).json({ message: "Renamed" });
@@ -98,7 +99,7 @@ export const updateFile = async (req, res, next) => {
     err.status = 500;
     next(err);
   }
-}
+};
 
 export const deleteFile = async (req, res, next) => {
   const { id } = req.params;
@@ -118,9 +119,9 @@ export const deleteFile = async (req, res, next) => {
     await rm(`./storage/${id}${fileData.extension}`);
 
     // Remove file from DB
-    await File.deleteOne({_id: id})
+    await File.deleteOne({ _id: id });
     return res.status(200).json({ message: "File Deleted Successfully" });
   } catch (err) {
     next(err);
   }
-}
+};

@@ -296,7 +296,6 @@ const Register = () => {
         }}
         useOneTap
       />
-      ;
     </div>
   );
 };

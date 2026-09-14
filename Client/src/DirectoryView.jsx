@@ -410,7 +410,6 @@ function DirectoryView() {
         setShowDetails,
         handleDeleteFile,
         handleDeleteDirectory,
-        handleContextMenu,
         BASE_URL,
       }}
     >

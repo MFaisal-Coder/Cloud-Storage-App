@@ -50,7 +50,7 @@ function DirectoryItem({ item, uploadProgress }) {
       }
       onContextMenu={(e) => handleContextMenu(e, item.id)}
     >
-      <div className="flex justify-between">
+      <div className="flex justify-between" title={`Size: ${item.size}`}>
         <div className="flex items-center gap-2">
           {item.isDirectory ? (
             <FaFolder className="folder-icon" />

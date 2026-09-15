@@ -7,6 +7,7 @@ import {
   FaSignOutAlt,
   FaSignInAlt,
 } from "react-icons/fa";
+import StorageDisplay from "./StorageDispaly";
 
 function DirectoryHeader({
   directoryName,
@@ -24,6 +25,8 @@ function DirectoryHeader({
   const [userName, setUserName] = useState("Guest User");
   const [userEmail, setUserEmail] = useState("guest@example.com");
   const [userPicture, setUserPicture] = useState("");
+  const [storage, setStorage] = useState(0)
+  const [availableSize, setAvailableSize] = useState(0)
 
   const userMenuRef = useRef(null);
   const navigate = useNavigate();
@@ -43,6 +46,8 @@ function DirectoryHeader({
           setUserName(data.name);
           setUserEmail(data.email);
           setUserPicture(data.picture)
+          setStorage(data.maxStorageSize)
+          setAvailableSize(data.availableSize)
           setLoggedIn(true);
         } else if (response.status === 401) {
           // User not logged in
@@ -192,6 +197,8 @@ function DirectoryHeader({
                     <span className="user-name">{userName}</span>
                     <span className="user-email">{userEmail}</span>
                   </div>
+                  {/* Storage Section goes here */}
+                  <StorageDisplay storage={storage} availableSize={availableSize}/>
                   <div className="user-menu-divider" />
                   <div
                     className="user-menu-item login-btn"

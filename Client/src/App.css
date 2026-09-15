@@ -14,3 +14,24 @@ body {
   border-color: #3C83F6;
 }
 
+.storage-container{
+  display: flex;
+  flex-direction: column;
+  padding-left: 18px;
+  justify-content: center;
+  font-size: small;
+  /* text-align: center; */
+}
+
+.storage-slider-container{
+  max-width: 120px;
+  height: 4px;
+  background-color: rgb(223, 217, 217);
+  border: 1px solid gray;
+  border-radius: 4px;
+  display: flex;
+}
+
+.storage-slider{
+  border-radius: inherit;
+}

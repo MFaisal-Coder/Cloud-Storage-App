@@ -95,7 +95,11 @@ export const loginWithGoogleController = async (req, res, next) => {
 
       res.status(201).json({ message: "User Registered" });
     } catch (err) {
-      // console.log('Hii', err.errorResponse.errInfo.details.schemaRulesNotSatisfied[0])
+      /* console.log(
+        "Hii",
+        err.errorResponse.errInfo.details.schemaRulesNotSatisfied[0]
+          .propertiesNotSatisfied[0].details,
+      ); */
       next(err);
     } finally {
       mongooseSession.endSession();

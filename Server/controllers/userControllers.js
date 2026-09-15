@@ -141,12 +141,15 @@ export const loginUser = async (req, res, next) => {
   }
 };
 
-export const getCurrentUser = (req, res) => {
+export const getCurrentUser = async(req, res) => {
+  const {size} = await Directory.findOne({userId: req.user.id})
   res.status(200).json({
     name: req.user.name,
     email: req.user.email,
     picture: req.user.picture,
     role: req.user.role,
+    maxStorageSize: req.user.maxStorageSize,
+    availableSize: size
   });
 };
 

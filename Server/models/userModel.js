@@ -22,6 +22,10 @@ const userSchema = new Schema(
       minLength: [3, "Password must have at least 3 characters"],
       // required: true //earlier we set it true because we were asking the user to manually enter password for register or login. Now after using the Google OAuth for login and register ( we will eventually use One Tap Login and Google's login ) we dont need password as mandatory field.
     },
+    maxStorageSize: {
+      type: Number,
+      default: 1 * 1024 ** 3, //1 GB (1024 **3 is GB)
+    },
     // Adding Mongoose schema for roles
     role: {
       type: String,

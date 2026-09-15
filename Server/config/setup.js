@@ -31,6 +31,9 @@ try {
             minLength: 3,
             description: "Folder name must have at least 3 characters",
           },
+          size: {
+            bsonType: ["int", "long"],
+          },
           parentDirId: {
             bsonType: ["objectId", "null"],
           },
@@ -66,7 +69,7 @@ try {
             description: "File name must have at least 3 characters",
           },
           size: {
-            bsonType: "int",
+            bsonType: ["int", "long"],
           },
           parentDirId: {
             bsonType: "objectId",
@@ -78,7 +81,7 @@ try {
             bsonType: "int",
           },
         },
-        additionalProperties: true
+        additionalProperties: true,
       },
     },
     validationAction: "error",
@@ -109,6 +112,9 @@ try {
             minLength: 3,
             description: "Password must have at least 3 characters",
           },
+          maxStorageSize:{
+            bsonType: ["int", "long"]
+          },
           // Adding MongoDB schema for roles
           role: {
             enum: ["Admin", "Manager", "User"],
@@ -126,7 +132,7 @@ try {
             bsonType: "int",
           },
         },
-        additionalProperties: true
+        additionalProperties: true,
       },
     },
     validationAction: "error",

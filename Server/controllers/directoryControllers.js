@@ -1,13 +1,14 @@
 import { rm } from "fs/promises";
 import Directory from "../models/directoryModel.js";
 import File from "../models/fileModel.js";
+import { directorySizeUpdate } from "../utils/totalSizeHandler.js";
 
 export const getDirectoryByID = async (req, res) => {
   const user = req.user;
   const _id = req.params.id || user.rootDirId.toString(); // we dont need to convert id into new ObjectId since mongoose handles that efficiently behind the scenes
 
   // Find the directory and verify ownership
-  const directoryData = await Directory.findOne({ _id}).lean()
+  const directoryData = await Directory.findOne({ _id }).lean();
   if (!directoryData) {
     return res
       .status(404)
@@ -16,13 +17,13 @@ export const getDirectoryByID = async (req, res) => {
 
   const files = await File.find({ parentDirId: _id }).lean();
   const directories = await Directory.find({ parentDirId: _id }).lean();
-  
+
   return res.status(200).json({
     ...directoryData,
     files: files.map((file) => ({ ...file, id: file._id })),
     directories: directories.map((dir) => ({ ...dir, id: dir._id })),
   });
-}
+};
 
 export const createDirectory = async (req, res, next) => {
   const user = req.user;
@@ -49,11 +50,11 @@ export const createDirectory = async (req, res, next) => {
     // console.log(err.errorResponse.errInfo.details.schemaRulesNotSatisfied)
     next(err);
   }
-}
+};
 
 export const renameDirectory = async (req, res, next) => {
   const user = req.user;
-  const { id } = req.params;  // id coming from req.params will always be string
+  const { id } = req.params; // id coming from req.params will always be string
   const { newDirName } = req.body;
 
   // console.log(id)  // confirmed
@@ -66,20 +67,26 @@ export const renameDirectory = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-}
+};
 
-export default async function deleteDirectory(req, res, next){
+export default async function deleteDirectory(req, res, next) {
   const user = req.user;
   const { id } = req.params;
 
-  const dirData = await Directory.findOne({_id: id, userId: user._id}).select("-_id -name -parentDirId -userId")
-  if(!dirData){
-    return res.status(404).json({error: 'Directory not found'})
+  const dirData = await Directory.findOne({ _id: id, userId: user._id }).select(
+    "-_id -name -userId",
+  );
+  if (!dirData) {
+    return res.status(404).json({ error: "Directory not found" });
   }
 
   async function getDirectoryContent(id) {
-    let fileData = await File.find({ parentDirId: id }).select('_id extension').lean();
-    let directoryData = await Directory.find({ parentDirId: id }).select("_id").lean();
+    let fileData = await File.find({ parentDirId: id })
+      .select("_id extension")
+      .lean();
+    let directoryData = await Directory.find({ parentDirId: id })
+      .select("_id")
+      .lean();
 
     for (const { _id } of directoryData) {
       const { fileData: childFiles, directoryData: childDirectories } =
@@ -91,14 +98,20 @@ export default async function deleteDirectory(req, res, next){
     return { fileData, directoryData };
   }
 
-  const {fileData, directoryData} = await getDirectoryContent(id);
+  const { fileData, directoryData } = await getDirectoryContent(id);
 
   for (const { _id, extension } of fileData) {
     await rm(`./storage/${_id.toString()}${extension}`);
   }
 
-  await File.deleteMany({_id: {$in : fileData.map(({_id})=> _id)}})
-  await Directory.deleteMany({_id: {$in : [...directoryData.map(({_id})=> _id), id]}})
+  
+  await File.deleteMany({ _id: { $in: fileData.map(({ _id }) => _id) } });
+  
+  await Directory.deleteMany({
+    _id: { $in: [...directoryData.map(({ _id }) => _id), id] },
+  });
+  
+  await directorySizeUpdate(dirData.parentDirId, -dirData.size);
 
   return res.status(201).json({ message: "File deleted successfully" });
 }

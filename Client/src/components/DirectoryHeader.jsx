@@ -27,6 +27,8 @@ function DirectoryHeader({
   const [userPicture, setUserPicture] = useState("");
   const [storage, setStorage] = useState(0)
   const [availableSize, setAvailableSize] = useState(0)
+  const usedGB = availableSize / 1024 ** 3;
+  const totalGB = storage / 1024 ** 3;
 
   const userMenuRef = useRef(null);
   const navigate = useNavigate();
@@ -173,7 +175,7 @@ function DirectoryHeader({
           id="file-upload"
           type="file"
           style={{ display: "none" }}
-          multiple
+          // multiple
           onChange={handleFileSelect}
         />
 
@@ -198,7 +200,7 @@ function DirectoryHeader({
                     <span className="user-email">{userEmail}</span>
                   </div>
                   {/* Storage Section goes here */}
-                  <StorageDisplay storage={storage} availableSize={availableSize}/>
+                  <StorageDisplay storage={usedGB} availableSize={totalGB}/>
                   <div className="user-menu-divider" />
                   <div
                     className="user-menu-item login-btn"

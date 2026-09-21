@@ -38,13 +38,17 @@ function DirectoryView() {
   const fileInputRef = useRef(null);
   const [uploadQueue, setUploadQueue] = useState([]); // queued items to upload
   const [uploadXhrMap, setUploadXhrMap] = useState({}); // track XHR per item
-  const [progressMap, setProgressMap] = useState({}); // track progress per item
-  const [isUploading, setIsUploading] = useState(false); // indicates if an upload is in progress
+  // const [progressMap, setProgressMap] = useState({}); // track progress per item
+  // const [isUploading, setIsUploading] = useState(false); // indicates if an upload is in progress
+
+  // Single-file upload state
+  const [uploadItem, setUploadItem] = useState(null); // { id, file, name, size, progress, isUploading }
+  const xhrRef = useRef(null);
 
   // Context menu
   const [activeContextMenu, setActiveContextMenu] = useState(null);
   const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
-  const [details, setDetails] = useState(null)
+  const [details, setDetails] = useState(null);
 
   /**
    * Utility: handle fetch errors
@@ -95,6 +99,7 @@ function DirectoryView() {
   useEffect(() => {
     getDirectoryItems();
     // Reset context menu
+    // loadDirectory()
     setActiveContextMenu(null);
   }, [dirId]);
 
@@ -149,23 +154,41 @@ function DirectoryView() {
    * Select multiple files
    */
   function handleFileSelect(e) {
-    const selectedFiles = Array.from(e.target.files);
+    // Updating file selection to a single file for ease, since the storage is being migrating to AWS
+    const file = e.target.files?.[0];
+    if (!file) return;
+    /*  const selectedFiles = Array.from(e.target.files);
     console.log(selectedFiles)
-    if (selectedFiles.length === 0) return;
+    if (selectedFiles.length === 0) return; */
+    if (uploadItem?.isUploading) {
+      setErrorMessage("An upload is already in progress. Please wait.");
+      setTimeout(() => setErrorMessage(""), 3000);
+      e.target.value = "";
+      return;
+    }
 
     // Build a list of "temp" items
-    const newItems = selectedFiles.map((file) => {
+    /* const newItems = selectedFiles.map((file) => {
       const tempId = `temp-${Date.now()}-${Math.random()}`;
       return {
         file,
         name: file.name,
         id: tempId,
         isUploading: false,
-        size: file.size
+        size: file.size,
       };
-    });
+    }); */
 
-    // Put them at the top of the existing list
+    const tempItem = {
+      file,
+      name: file.name,
+      size: file.size,
+      id: `temp-${Date.now()}`,
+      isUploading: true,
+      progress: 0,
+    };
+
+    /* // Put them at the top of the existing list
     setFilesList((prev) => [...newItems, ...prev]);
 
     // Initialize progress=0 for each
@@ -184,13 +207,20 @@ function DirectoryView() {
       setIsUploading(true);
       // begin the queue process
       processUploadQueue([...uploadQueue, ...newItems.reverse()]);
-    }
+    } */
+
+    // Optimistically show the file in the list
+    setFilesList((prev) => [tempItem, ...prev]);
+    setUploadItem(tempItem);
+    e.target.value = "";
+
+    startUpload(tempItem);
   }
 
   /**
    * Upload items in queue one by one
    */
-  function processUploadQueue(queue) {
+  /* function processUploadQueue(queue) {
     if (queue.length === 0) {
       // No more items to upload
       setIsUploading(false);
@@ -233,13 +263,59 @@ function DirectoryView() {
     // If user cancels, remove from the queue
     setUploadXhrMap((prev) => ({ ...prev, [currentItem.id]: xhr }));
     xhr.send(currentItem.file);
+  } */
+
+  const loadDirectory = async () => {
+    try {
+      const data = await getDirectoryItems(dirId);
+      setDirectoryName(dirId ? data.name : "My Drive");
+      setDirectoriesList([...data.directories].reverse());
+      setFilesList([...data.files].reverse());
+    } catch (err) {
+      if (err.response?.status === 401) navigate("/login");
+      else setErrorMessage(err.response?.data?.error || err.message);
+    }
+  };
+
+  // Upload a single file
+  function startUpload(item) {
+    const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
+
+    xhr.open("POST", `${BASE_URL}/file/${dirId || ""}`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("filename", item.name);
+    xhr.setRequestHeader("filesize", item.size);
+
+    xhr.upload.addEventListener("progress", (evt) => {
+      if (evt.lengthComputable) {
+        const progress = (evt.loaded / evt.total) * 100;
+        setUploadItem((prev) => (prev ? { ...prev, progress } : prev));
+      }
+    });
+
+    xhr.onload = () => {
+      // Clear upload state and refresh directory
+      setUploadItem(null);
+      // loadDirectory();
+    };
+
+    xhr.onerror = () => {
+      setErrorMessage("This file is larger than the available space!");
+      // Remove temp item from the list
+      setFilesList((prev) => prev.filter((f) => f.id !== item.id));
+      setUploadItem(null);
+      setTimeout(() => setErrorMessage(""), 3000);
+    };
+
+    xhr.send(item.file);
   }
 
   /**
    * Cancel an in-progress upload
    */
   function handleCancelUpload(tempId) {
-    const xhr = uploadXhrMap[tempId];
+    /* const xhr = uploadXhrMap[tempId];
     if (xhr) {
       xhr.abort();
     }
@@ -260,7 +336,14 @@ function DirectoryView() {
       const copy = { ...prev };
       delete copy[tempId];
       return copy;
-    });
+    }); */
+
+    if (uploadItem && uploadItem.id === tempId && xhrRef.current) {
+      xhrRef.current.abort();
+    }
+    // Remove temp item and reset state
+    setFilesList((prev) => prev.filter((f) => f.id !== tempId));
+    setUploadItem(null);
   }
 
   /**
@@ -389,6 +472,14 @@ function DirectoryView() {
     ...directoriesList.map((d) => ({ ...d, isDirectory: true })),
     ...filesList.map((f) => ({ ...f, isDirectory: false })),
   ];
+
+  // For compatibility with children expecting these values:
+  const isUploading = !!uploadItem?.isUploading;
+  const progressMap = uploadItem
+    ? { [uploadItem.id]: uploadItem.progress || 0 }
+    : {};
+
+
   return (
     <DirectoryContext.Provider
       value={{
@@ -469,16 +560,10 @@ function DirectoryView() {
             </p>
           )
         ) : (
-          <DirectoryList
-            items={combinedItems}
-            BASE_URL={BASE_URL}
-          />
+          <DirectoryList items={combinedItems} BASE_URL={BASE_URL} />
         )}
         {showDetails && (
-          <DetailsModel
-            item={details}
-            onClose={() => setShowDetails(false)}
-          />
+          <DetailsModel item={details} onClose={() => setShowDetails(false)} />
         )}
       </div>
     </DirectoryContext.Provider>

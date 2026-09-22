@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { uploadInitiate } from "./apis/fileApi";
+import { uploadComplete, uploadInitiate } from "./apis/fileApi.js";
 import CreateDirectoryModal from "./components/CreateDirectoryModal";
 import DirectoryHeader from "./components/DirectoryHeader";
 import DirectoryList from "./components/DirectoryList";
@@ -204,10 +204,17 @@ function DirectoryView() {
       }
     });
 
-    xhr.onload = () => {
-      // Clear upload state and refresh directory
+    xhr.onload = async() => {
+      if (xhr.status === 200) {
+        const fileUploadResponse = await uploadComplete(fileId);
+        console.log(fileUploadResponse);
+      } else {
+        console.log(xhr.response);
+        console.log(xhr.responseText);
+        setErrorMessage("File not uploaded");
+        setTimeout(() => setErrorMessage(""), 3000);
+      }
       setUploadItem(null);
-      // loadDirectory();
     };
 
     xhr.onerror = () => {

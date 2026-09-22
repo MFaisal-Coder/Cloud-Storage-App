@@ -1,9 +1,10 @@
+import { createWriteStream } from "fs";
 import { rm } from "fs/promises";
 import path from "path";
 import Directory from "../models/directoryModel.js";
 import File from "../models/fileModel.js";
 import User from "../models/userModel.js";
-import { createWriteStream } from "fs";
+import { createUploadSignedUrl } from "../services/s3Service.js";
 import { directorySizeUpdate } from "../utils/totalSizeHandler.js";
 
 export const uploadFile = async (req, res, next) => {
@@ -94,7 +95,7 @@ export const uploadFile = async (req, res, next) => {
     });
 
     // This is to handle the mid-cancellation on upload of a file
-    // 'close' event gets fired when the UI hits cancel mid-upload 
+    // 'close' event gets fired when the UI hits cancel mid-upload
     req.on("close", async () => {
       if (!fileUploadCompleted) {
         try {
@@ -111,6 +112,64 @@ export const uploadFile = async (req, res, next) => {
       await File.deleteOne({ _id: fileInserted.insertedId });
       return res.status(404).json({ message: "Error In File Uploaded" });
     });
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
+};
+
+export const uploadInitiate = async (req, res, next) => {
+  const parentDirId = req.body.parentDirId || req.user.rootDirId.toString();
+
+  try {
+    const parentDirData = await Directory.findOne({
+      _id: parentDirId,
+      userId: req.user._id,
+    });
+
+    // Check if parent directory exists
+    if (!parentDirData) {
+      return res.status(404).json({ error: "Parent directory not found!" });
+    }
+
+    const filename = req.body.name || "untitled";
+    const filesize = req.body.size;
+
+    const user = await User.findById(req.user._id);
+    const rootDir = await Directory.findById(req.user.rootDirId);
+
+    const remainingSpace = user.maxStorageSize - rootDir.size;
+
+    if (filesize > remainingSpace) {
+      console.log("File too large");
+      return res
+        .status(507)
+        .json({ Error: "Not enough space available to upload." });
+    }
+
+    // console.log({ filesize });
+    const extension = path.extname(filename);
+
+    const fileInserted = await File.insertOne({
+      extension,
+      name: filename,
+      parentDirId,
+      userId: parentDirData.userId,
+      size: filesize,
+      isUploading: true,
+    });
+
+    // console.log(fileInserted)
+
+    const id = fileInserted.id;
+    const fullFileName = `${id}${extension}`;
+
+    const signedUrl = await createUploadSignedUrl({
+      key: fullFileName,
+      contentType: req.body.contentType,
+    });
+
+    return res.json({ uploadSignedUrl: signedUrl , fileId: fullFileName  });
   } catch (err) {
     console.log(err);
     next(err);

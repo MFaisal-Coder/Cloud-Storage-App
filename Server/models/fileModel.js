@@ -19,6 +19,9 @@ const fileSchema = new Schema(
       type: Schema.Types.ObjectId,
       required: true,
     },
+    isUploading: {
+      type: Schema.Types.Boolean,
+    },
     parentDirId: {
       type: Schema.Types.ObjectId,
       required: true,
@@ -27,7 +30,7 @@ const fileSchema = new Schema(
   },
   {
     strict: "throw", // this is equivalent to 'additionalProperties: false' in MongoDB which does not allow to add any other fields that arent in schema
-    timestamps: true
+    timestamps: true,
   },
 );
 

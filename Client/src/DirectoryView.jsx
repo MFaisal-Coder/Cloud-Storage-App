@@ -1,12 +1,14 @@
-import { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import DirectoryHeader from "./components/DirectoryHeader";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { uploadInitiate } from "./apis/fileApi";
 import CreateDirectoryModal from "./components/CreateDirectoryModal";
-import RenameModal from "./components/RenameModal";
+import DirectoryHeader from "./components/DirectoryHeader";
 import DirectoryList from "./components/DirectoryList";
+import RenameModal from "./components/RenameModal";
+import { DirectoryContext } from "./context/DirectoryContext";
+// import { getDirectoryItems } from "./apis/directoryApi.js";
 import "./DirectoryView.css";
 import DetailsModel from "./modals/DetailsModel";
-import { DirectoryContext } from "./context/DirectoryContext";
 
 export const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -36,11 +38,6 @@ function DirectoryView() {
 
   // Uploading states
   const fileInputRef = useRef(null);
-  const [uploadQueue, setUploadQueue] = useState([]); // queued items to upload
-  const [uploadXhrMap, setUploadXhrMap] = useState({}); // track XHR per item
-  // const [progressMap, setProgressMap] = useState({}); // track progress per item
-  // const [isUploading, setIsUploading] = useState(false); // indicates if an upload is in progress
-
   // Single-file upload state
   const [uploadItem, setUploadItem] = useState(null); // { id, file, name, size, progress, isUploading }
   const xhrRef = useRef(null);
@@ -99,7 +96,7 @@ function DirectoryView() {
   useEffect(() => {
     getDirectoryItems();
     // Reset context menu
-    // loadDirectory()
+    // loadDirectory();
     setActiveContextMenu(null);
   }, [dirId]);
 
@@ -153,7 +150,7 @@ function DirectoryView() {
   /**
    * Select multiple files
    */
-  function handleFileSelect(e) {
+  async function handleFileSelect(e) {
     // Updating file selection to a single file for ease, since the storage is being migrating to AWS
     const file = e.target.files?.[0];
     if (!file) return;
@@ -167,18 +164,6 @@ function DirectoryView() {
       return;
     }
 
-    // Build a list of "temp" items
-    /* const newItems = selectedFiles.map((file) => {
-      const tempId = `temp-${Date.now()}-${Math.random()}`;
-      return {
-        file,
-        name: file.name,
-        id: tempId,
-        isUploading: false,
-        size: file.size,
-      };
-    }); */
-
     const tempItem = {
       file,
       name: file.name,
@@ -188,104 +173,29 @@ function DirectoryView() {
       progress: 0,
     };
 
-    /* // Put them at the top of the existing list
-    setFilesList((prev) => [...newItems, ...prev]);
-
-    // Initialize progress=0 for each
-    newItems.forEach((item) => {
-      setProgressMap((prev) => ({ ...prev, [item.id]: 0 }));
+    const data = await uploadInitiate({
+      name: file.name,
+      size: file.size,
+      contentType: file.type,
+      parentDirId: dirId,
     });
 
-    // Add them to the uploadQueue
-    setUploadQueue((prev) => [...prev, ...newItems]);
-
-    // Clear file input so the same file can be chosen again if needed
-    e.target.value = "";
-
-    // Start uploading queue if not already uploading
-    if (!isUploading) {
-      setIsUploading(true);
-      // begin the queue process
-      processUploadQueue([...uploadQueue, ...newItems.reverse()]);
-    } */
+    const { uploadSignedUrl, fileId } = data;
 
     // Optimistically show the file in the list
     setFilesList((prev) => [tempItem, ...prev]);
     setUploadItem(tempItem);
     e.target.value = "";
 
-    startUpload(tempItem);
+    startUpload({ item: tempItem, uploadUrl: uploadSignedUrl, fileId });
   }
 
-  /**
-   * Upload items in queue one by one
-   */
-  /* function processUploadQueue(queue) {
-    if (queue.length === 0) {
-      // No more items to upload
-      setIsUploading(false);
-      setUploadQueue([]);
-      setTimeout(() => {
-        getDirectoryItems();
-      }, 1000);
-      return;
-    }
-
-    // Take first item
-    const [currentItem, ...restQueue] = queue;
-
-    // Mark it as isUploading: true
-    setFilesList((prev) =>
-      prev.map((f) =>
-        f.id === currentItem.id ? { ...f, isUploading: true } : f,
-      ),
-    );
-
-    // Start upload
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${BASE_URL}/file/${dirId || ""}`, true);
-    xhr.withCredentials = true;
-    xhr.setRequestHeader("filename", currentItem.name);
-    xhr.setRequestHeader("filesize", currentItem.size);
-
-    xhr.upload.addEventListener("progress", (evt) => {
-      if (evt.lengthComputable) {
-        const progress = (evt.loaded / evt.total) * 100;
-        setProgressMap((prev) => ({ ...prev, [currentItem.id]: progress }));
-      }
-    });
-
-    xhr.addEventListener("load", () => {
-      // Move on to the next item
-      processUploadQueue(restQueue);
-    });
-
-    // If user cancels, remove from the queue
-    setUploadXhrMap((prev) => ({ ...prev, [currentItem.id]: xhr }));
-    xhr.send(currentItem.file);
-  } */
-
-  const loadDirectory = async () => {
-    try {
-      const data = await getDirectoryItems(dirId);
-      setDirectoryName(dirId ? data.name : "My Drive");
-      setDirectoriesList([...data.directories].reverse());
-      setFilesList([...data.files].reverse());
-    } catch (err) {
-      if (err.response?.status === 401) navigate("/login");
-      else setErrorMessage(err.response?.data?.error || err.message);
-    }
-  };
-
   // Upload a single file
-  function startUpload(item) {
+  function startUpload({item, uploadUrl, fileId}) {
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
 
-    xhr.open("POST", `${BASE_URL}/file/${dirId || ""}`);
-    xhr.withCredentials = true;
-    xhr.setRequestHeader("filename", item.name);
-    xhr.setRequestHeader("filesize", item.size);
+    xhr.open("PUT", uploadUrl);
 
     xhr.upload.addEventListener("progress", (evt) => {
       if (evt.lengthComputable) {
@@ -315,29 +225,7 @@ function DirectoryView() {
    * Cancel an in-progress upload
    */
   function handleCancelUpload(tempId) {
-    /* const xhr = uploadXhrMap[tempId];
-    if (xhr) {
-      xhr.abort();
-    }
-    // Remove it from queue if still there
-    setUploadQueue((prev) => prev.filter((item) => item.id !== tempId));
-
-    // Remove from filesList
-    setFilesList((prev) => prev.filter((f) => f.id !== tempId));
-
-    // Remove from progressMap
-    setProgressMap((prev) => {
-      const { [tempId]: _, ...rest } = prev;
-      return rest;
-    });
-
-    // Remove from Xhr map
-    setUploadXhrMap((prev) => {
-      const copy = { ...prev };
-      delete copy[tempId];
-      return copy;
-    }); */
-
+  
     if (uploadItem && uploadItem.id === tempId && xhrRef.current) {
       xhrRef.current.abort();
     }
@@ -478,7 +366,6 @@ function DirectoryView() {
   const progressMap = uploadItem
     ? { [uploadItem.id]: uploadItem.progress || 0 }
     : {};
-
 
   return (
     <DirectoryContext.Provider

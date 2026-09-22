@@ -4,7 +4,7 @@ import path from "path";
 import Directory from "../models/directoryModel.js";
 import File from "../models/fileModel.js";
 import User from "../models/userModel.js";
-import { createUploadSignedUrl } from "../services/s3Service.js";
+import { createGetSignedUrl, createUploadSignedUrl } from "../services/s3Service.js";
 import { directorySizeUpdate } from "../utils/totalSizeHandler.js";
 
 export const uploadFile = async (req, res, next) => {
@@ -189,19 +189,17 @@ export const readFile = async (req, res) => {
     return res.status(404).json({ error: "File not found!" });
   }
 
-  const filePath = `${process.cwd()}/storage/${id}${fileData.extension}`;
+  const fullFileName = `${id}${fileData.extension}`
 
   // If "download" is requested, set the appropriate headers
   if (req.query.action === "download") {
-    res.download(filePath, fileData.name);
+    const getSignedURL = await createGetSignedUrl({key: fullFileName, filename:fileData.name, download: true})
+    return res.redirect(getSignedURL);
   }
 
   // Send file
-  return res.sendFile(filePath, (err) => {
-    if (!res.headersSent && err) {
-      return res.status(404).json({ error: "File not found!" });
-    }
-  });
+  const getSignedURL = await createGetSignedUrl({key: fullFileName, filename:fileData.name})
+  return res.redirect(getSignedURL)
 };
 
 export const updateFile = async (req, res, next) => {

@@ -1,6 +1,7 @@
 import { rm } from "fs/promises";
 import Directory from "../models/directoryModel.js";
 import File from "../models/fileModel.js";
+import { deleteS3MultipleFiles } from "../services/s3Service.js";
 import { directorySizeUpdate } from "../utils/totalSizeHandler.js";
 
 export const getDirectoryByID = async (req, res) => {
@@ -100,17 +101,17 @@ export default async function deleteDirectory(req, res, next) {
 
   const { fileData, directoryData } = await getDirectoryContent(id);
 
-  for (const { _id, extension } of fileData) {
-    await rm(`./storage/${_id.toString()}${extension}`);
-  }
+  const filesKey = fileData.map(({_id, extension}) => ({Key: `${_id}${extension}`}))
+  // console.log(filesKey)
 
+  await deleteS3MultipleFiles(filesKey)
   
   await File.deleteMany({ _id: { $in: fileData.map(({ _id }) => _id) } });
-  
+
   await Directory.deleteMany({
     _id: { $in: [...directoryData.map(({ _id }) => _id), id] },
   });
-  
+
   await directorySizeUpdate(dirData.parentDirId, -dirData.size);
 
   return res.status(201).json({ message: "File deleted successfully" });

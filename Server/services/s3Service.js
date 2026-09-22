@@ -1,5 +1,8 @@
 import {
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -40,3 +43,32 @@ export const createGetSignedUrl = async ({
 
   return url;
 };
+
+export const getS3FileMetaData = async (key) =>{
+  // Metadata will show all the values like total size of file, file name etc
+    const command = new HeadObjectCommand({
+    Bucket: "whyfay-storage-app",
+    Key: key,
+  });
+
+  return await s3Client.send(command);
+}
+
+export const deleteS3File = async ({key}) => {
+  const command = new DeleteObjectCommand({
+    Bucket: "whyfay-storage-app",
+    Key: key
+  })
+   return await s3Client.send(command);
+}
+
+export const deleteS3MultipleFiles = async (keys) => {
+  const command = new DeleteObjectsCommand({
+    Bucket: "whyfay-storage-app",
+    Delete: {
+    Objects: keys, // keys here is an array of objects -> with key as 'Key' and values as 'file names with extension'
+    Quiet: false, // set true to skip individual delete responses
+  },
+  })
+   return await s3Client.send(command);
+}

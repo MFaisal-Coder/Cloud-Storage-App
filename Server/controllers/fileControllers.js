@@ -4,7 +4,12 @@ import path from "path";
 import Directory from "../models/directoryModel.js";
 import File from "../models/fileModel.js";
 import User from "../models/userModel.js";
-import { createGetSignedUrl, createUploadSignedUrl } from "../services/s3Service.js";
+import {
+  createGetSignedUrl,
+  createUploadSignedUrl,
+  deleteS3File,
+  getS3FileMetaData,
+} from "../services/s3Service.js";
 import { directorySizeUpdate } from "../utils/totalSizeHandler.js";
 
 export const uploadFile = async (req, res, next) => {
@@ -169,7 +174,7 @@ export const uploadInitiate = async (req, res, next) => {
       contentType: req.body.contentType,
     });
 
-    return res.json({ uploadSignedUrl: signedUrl , fileId: fullFileName  });
+    return res.json({ uploadSignedUrl: signedUrl, fileId: fileInserted.id });
   } catch (err) {
     console.log(err);
     next(err);
@@ -189,17 +194,46 @@ export const readFile = async (req, res) => {
     return res.status(404).json({ error: "File not found!" });
   }
 
-  const fullFileName = `${id}${fileData.extension}`
+  const fullFileName = `${id}${fileData.extension}`;
 
   // If "download" is requested, set the appropriate headers
   if (req.query.action === "download") {
-    const getSignedURL = await createGetSignedUrl({key: fullFileName, filename:fileData.name, download: true})
+    const getSignedURL = await createGetSignedUrl({
+      key: fullFileName,
+      filename: fileData.name,
+      download: true,
+    });
     return res.redirect(getSignedURL);
   }
 
   // Send file
-  const getSignedURL = await createGetSignedUrl({key: fullFileName, filename:fileData.name})
-  return res.redirect(getSignedURL)
+  const getSignedURL = await createGetSignedUrl({
+    key: fullFileName,
+    filename: fileData.name,
+  });
+  return res.redirect(getSignedURL);
+};
+
+export const uploadComplete = async (req, res, next) => {
+  const file = await File.findById(req.body.fileId);
+  if (!file) {
+    return res.status(404).json({ error: "File not found in our records" });
+  }
+
+  try {
+    const fileMetaData = await getS3FileMetaData(`${file.id}${file.extension}`);
+    if (fileMetaData.ContentLength !== file.size) {
+      await file.deleteOne();
+      return res.status(400).json({ error: "File size does not match." });
+    }
+    file.isUploading = false;
+    await file.save();
+    await directorySizeUpdate(file.parentDirId, file.size);
+    res.json({ message: "Upload completed" });
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
 };
 
 export const updateFile = async (req, res, next) => {
@@ -244,10 +278,10 @@ export const deleteFile = async (req, res, next) => {
 
   try {
     // Remove file from DB
-    await File.deleteOne({ _id: id });
+    await deleteS3File({key: `${fileData.id}${fileData.extension}`})
     await directorySizeUpdate(fileData.parentDirId, -fileData.size);
-    // Remove file from filesystem
-    await rm(`./storage/${id}${fileData.extension}`);
+    await fileData.deleteOne();
+    // Remove file from S3
     return res.status(200).json({ message: "File Deleted Successfully" });
   } catch (err) {
     next(err);

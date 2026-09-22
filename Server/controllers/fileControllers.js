@@ -10,6 +10,7 @@ import {
   deleteS3File,
   getS3FileMetaData,
 } from "../services/s3Service.js";
+import {createCloudFrontGetSignedUrl} from "../services/cloudFront.js"
 import { directorySizeUpdate } from "../utils/totalSizeHandler.js";
 
 export const uploadFile = async (req, res, next) => {
@@ -198,7 +199,8 @@ export const readFile = async (req, res) => {
 
   // If "download" is requested, set the appropriate headers
   if (req.query.action === "download") {
-    const getSignedURL = await createGetSignedUrl({
+    // Here we are using cloudfront signed url (CDN) to serve/downlaod file, previously we were using s3 signed urls
+    const getSignedURL = createCloudFrontGetSignedUrl({
       key: fullFileName,
       filename: fileData.name,
       download: true,
@@ -207,7 +209,7 @@ export const readFile = async (req, res) => {
   }
 
   // Send file
-  const getSignedURL = await createGetSignedUrl({
+  const getSignedURL = createCloudFrontGetSignedUrl({
     key: fullFileName,
     filename: fileData.name,
   });

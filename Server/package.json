@@ -26,6 +26,7 @@
     "mime-types": "^2.1.35",
     "mongoose": "^9.5.0",
     "nodemailer": "^9.0.3",
+    "razorpay": "^2.9.8",
     "zod": "^4.6.1"
   },
   "devDependencies": {

@@ -9,7 +9,7 @@ export const createCloudFrontGetSignedUrl = ({
   key,
   download = false,
   filename,
-}) => {
+}) => {npm
   // Here we dont have any option for content disposition as we had in s3 signer, so we pass query param here
   // IMP: also save this 'response-content-disposition' as a cache policy in your cloudfront policy
   // and once created, attach it to your cloudfront distruibution, only then will it work

@@ -112,9 +112,13 @@ try {
             minLength: 3,
             description: "Password must have at least 3 characters",
           },
-          maxStorageSize:{
-            bsonType: ["int", "long"]
+          subscriptionId: {
+            bsonType: "string",
           },
+          maxStorageSize: {
+            bsonType: ["int", "long", "double"],
+          },
+
           // Adding MongoDB schema for roles
           role: {
             enum: ["Admin", "Manager", "User"],

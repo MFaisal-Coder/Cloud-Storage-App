@@ -1,13 +1,15 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
 import { connectDB } from "./config/db.js";
 import checkAuth from "./middlewares/auth.js";
 import authRoutes from "./routes/authRoutes.js";
 import directoryRoutes from "./routes/directoryRoutes.js";
 import fileRoutes from "./routes/fileRoutes.js";
+import razorpayRoutes from "./routes/razorpayRoutes.js";
+import razorpayWebhookRoute from "./routes/razorpayWebhookRoute.js";
 import userRoutes from "./routes/userRoutes.js";
-import helmet from "helmet";
 
 await connectDB();
 
@@ -24,12 +26,14 @@ try {
       credentials: true,
     }),
   );
-  app.use(helmet())
+  app.use(helmet());
 
   app.use("/auth", authRoutes);
   app.use("/", userRoutes);
   app.use("/directory", checkAuth, directoryRoutes);
   app.use("/file", checkAuth, fileRoutes);
+  app.use("/razorpay", checkAuth , razorpayRoutes);
+  app.use('/webhook', razorpayWebhookRoute)
 
   app.use((err, req, res, next) => {
     console.log(err);
